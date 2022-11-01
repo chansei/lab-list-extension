@@ -49,6 +49,17 @@ def gmail_get_messages_body_date(messages, msg):  # 受信日時の取得
     date = dateutil.parser.parse(eml.get('Date')).strftime("%Y-%m-%d_%H-%M-%S")
     return date
 
+def gmail_display_label(service): # ラベルID一覧表示
+    results = service.users().labels().list(userId='me').execute()
+    labels = results.get('labels', [])
+
+    if not labels:
+        print('No labels found.')
+    else:
+        print('Labels:')
+        for label in labels:
+            print(label)
+
 def get_auth_key():
     creds = None
     if os.path.exists('token.json'):
