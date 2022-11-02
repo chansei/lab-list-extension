@@ -1,7 +1,13 @@
+import json
 import os
+import re
 import traceback
 from time import sleep
 
+import pandas as pd
+import requests
+import schedule
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -9,13 +15,29 @@ from selenium.webdriver.common.by import By
 import api_gmail
 
 URL_LOGIN = 'https://accounts.google.com/ServiceLogin?hl=ja&passive=true&continue=https://www.google.com/&ec=GAZAmgQ'
+URL_PAGE = 'https://docs.google.com/forms/d/e/1FAIpQLScUUrTcQyKcZXwCWS1Cm66MrdIX7j6kZ43_QppFefVqT60-mQ/viewanalytics'
 
 def main():
     driver = webdriver.Chrome(executable_path="chromedriver.exe")
-    login(driver, URL_LOGIN)
-    sleep(999) # デバッグ用
+    html = get_html(driver, URL_LOGIN)
+    if html is not None:
+        df = parse_html(html)
+    while(True):
+        sleep(10) # 雑なループ
+        html = update_html(driver)
+        if html is not None:
+            _df = parse_html(html)
+        if not (_df.compare(df)).empty:
+            txt = '```\n'
+            for i in range(len(_df)):
+                txt += _df['名前'][i]+':'+str(_df['投票数'][i])+'人('+str('{:+}'.format(_df['投票数'][i]-df['投票数'][i]))+'人)\n'
+            txt += '```'
+            cont = {'content': txt}
+            head = {'Content-Type': 'application/json'}
+            res = requests.post(os.environ.get('URL_WEBHOOK'), json.dumps(cont), headers=head)
+        df = _df
 
-def login(driver, url):
+def get_html(driver, url):
     driver.get(url)
     try: 
         # Googleログイン画面
@@ -49,10 +71,35 @@ def login(driver, url):
         # 本人確認
         btn = driver.find_element(By.XPATH,'//*[@id="view_container"]/div/div/div[2]/div/div[2]/div/div[1]/div/div/button')
         btn.click()
-        return True
+        sleep(1)
+        # 投票ページ
+        driver.get(URL_PAGE)
+        sleep(5)
+        html = driver.page_source
+        return html
     except Exception:
         traceback.print_exc()
-        return False
+        return None
+
+def update_html(driver):
+    try:
+        driver.refresh()
+        sleep(5)
+        html = driver.page_source
+        return html
+    except Exception:
+        traceback.print_exc()
+        return None
+
+def parse_html(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    data = soup.find('tbody').get_text()
+    names = re.split(r'\d+', data)
+    names.pop()
+    n_votes = list(map(int, re.findall(r'\d+', data)))
+    df = pd.DataFrame(list(zip(names, n_votes)), columns=['名前', '投票数'])
+    print(df)
+    return df
 
 if __name__ == '__main__':
     load_dotenv()
