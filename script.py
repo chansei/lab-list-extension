@@ -37,7 +37,10 @@ def main():
             now = datetime.datetime.now()
             txt = now.strftime('%Y年%m月%d日 %H:%M:%S')+'現在\n```\n'
             for i in range(len(_df)):
-                txt += _df['名前'][i]+':'+str(_df['投票数'][i])+'人('+str('{:+}'.format(_df['投票数'][i]-df['投票数'][i]))+'人)\n'
+                txt += _df['名前'][i]+':'+str(_df['投票数'][i])+'人'
+                if _df['投票数'][i]-df['投票数'][i] != 0:
+                    txt += '('+str('{:+}'.format(_df['投票数'][i]-df['投票数'][i]))+'人)'
+                txt += '\n'
             txt += '```'
             cont = {'content': txt}
             head = {'Content-Type': 'application/json'}
