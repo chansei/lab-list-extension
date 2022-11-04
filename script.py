@@ -22,9 +22,10 @@ URL_PAGE = 'https://docs.google.com/forms/d/e/1FAIpQLScUUrTcQyKcZXwCWS1Cm66MrdIX
 def main():
     options = Options()
     options.add_argument('--headless')
-    driver = webdriver.Chrome(executable_path="chromedriver.exe", chrome_options=options)
-    # Chromeのウィンドウを表示するなら↓を使う
-    # driver = webdriver.Chrome(executable_path="chromedriver.exe")
+    driver = webdriver.Chrome(executable_path="chromedriver.exe")
+    # Chromeのウィンドウを表示しないなら↓を使う
+    # 非表示にするとエラー落ちする可能性がある，要検証
+    # driver = webdriver.Chrome(executable_path="chromedriver.exe", chrome_options=options)
     html = get_html(driver, URL_LOGIN)
     if html is not None:
         df = parse_html(html)
@@ -38,7 +39,7 @@ def main():
             txt = now.strftime('%Y年%m月%d日 %H:%M:%S')+'現在\n```\n'
             for i in range(len(_df)):
                 txt += _df['名前'][i]+':'+str(_df['投票数'][i])+'人('+str('{:+}'.format(_df['投票数'][i]-df['投票数'][i]))+'人)\n'
-            txt += '```'
+            txt += '合計'+str(_df.sum()['投票数'])+'人\n```'
             cont = {'content': txt}
             head = {'Content-Type': 'application/json'}
             res = requests.post(os.environ.get('URL_WEBHOOK'), json.dumps(cont), headers=head)
